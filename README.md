@@ -7,6 +7,7 @@ Software
 --------
 
 Thermostat.ino
+
     Should be uploaded to an atmega328P. 
     Can be any arduino but for my project I used a bare atmega328P running at 8MHz and powered at 3.3V (see hardware part)
     
@@ -18,7 +19,9 @@ Thermostat.ino
     5- PCD8544 (https://github.com/carlosefr/pcd8544/releases)
     
 Receiver.ino
+
     Uploaded to another atmega328P
+    
     Libraries needed:
     1- SPI (included on arduino IDE)
     2- RF24 (https://github.com/TMRh20/RF24)
@@ -30,6 +33,7 @@ Hardware
 --------
 
 Unit 1 (controller unit) consists in the following parts:
+
     1- Atmega328P microcontroller
     2- nokia 5110 lcd display
     3- nrf24l01+ module
@@ -46,6 +50,7 @@ Unit 1 (controller unit) consists in the following parts:
     14- An enclosure to nicely fit all those componentes.
     
 Unit 2 (receiver unit) consists in the following parts:
+
     1- Arduino pro-mini running a 8MHz and 3.3V.
     2- Relay module (5V controlled via transistor with an arduino pin (HIGH=3.3V).
     3- Led and resitor to show if heater is on or off
