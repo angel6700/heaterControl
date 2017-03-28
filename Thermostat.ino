@@ -21,6 +21,7 @@
 ///////// Definition of lcd: nokia 5100 display
 static PCD8544 lcd(5, 6, 7, 4, 8);
 
+
 DS3231  RTC(SDA, SCL);
 Time t;
 boolean DST = 0;
@@ -59,7 +60,7 @@ unsigned int repaintCount = 0;
 unsigned int loopCount = 0;
 
 // *************************************************************************************************
-int sleepTimeMitutes = 5;
+int sleepTimeMitutes = 1;
 int batteryCheckCounter = 0;
 int batteryChecksPerDay = 1;
 int sleepTimeRepeats = (sleepTimeMitutes * 60 / 8);
@@ -85,7 +86,8 @@ float tempMin = 15.0;
 
 volatile boolean standbyUP = false;
 volatile boolean standbyDOWN = false;
-volatile boolean firstButtonPress = true;
+volatile boolean firstButtonPressUP = true;
+volatile boolean firstButtonPressDOWN = true;
 volatile boolean backlightON = false;
 volatile unsigned long debounceTimerUP = 0;
 volatile unsigned long debounceTimerDOWN = 0;
@@ -147,14 +149,14 @@ void wakeUpButtonUp()
   if ((millis() - debounceTimerUP) > debounce)
   {
     debounceTimerUP = millis();
-    if (setPoint < tempMax && !firstButtonPress)
+    if (setPoint < tempMax && !firstButtonPressUP)
     {
       setPoint += temperatureStep;
     }
     digitalWrite(pin_backLight, LOW);  // Turn on backligh
     backlightON = true;
     standbyUP = true;
-    firstButtonPress = false;
+    firstButtonPressUP = false;
   }
 } //////////////////////////////////// end wakeUpButtonUp()  ////////////////////////////
 
@@ -165,14 +167,14 @@ void wakeUpButtonDown()
   if ((millis() - debounceTimerDOWN) > debounce)
   {
     debounceTimerDOWN = millis();
-    if (setPoint > tempMin && !firstButtonPress)
+    if (setPoint > tempMin && !firstButtonPressDOWN)
     {
       setPoint -= temperatureStep;
     }
     digitalWrite(pin_backLight, LOW);  // Turn off backlight
     backlightON = true;
     standbyDOWN = true;
-    firstButtonPress = false;
+    firstButtonPressDOWN = false;
   }
 } ////////////////////////////// end wakeUpButtonDown() //////////////////////////////
 
@@ -486,23 +488,48 @@ boolean heating(boolean newMode)
 
 void loop()
 {
+//
+//  /////////////////  temporal block to show the time spent awake, between sleps  ///////////
+//  if (debounceTimerUP>0)
+//  {
+//    unsigned long runTime = millis() - tempCounter;
+//    lcd.setCursor(20, 5);
+//    //lcd.clearLine();
+//    lcd.print(runTime, 1);
+//  }
+//  else if (debounceTimerDOWN>0)
+//  {
+//    unsigned long runTime = millis() - debounceTimerDOWN;
+//    lcd.setCursor(20, 5);
+//    //lcd.clearLine();
+//    lcd.print(runTime, 1);
+//  }
+//  else
+//  {
+//    unsigned long runTime = millis() - tempCounter;
+//    lcd.setCursor(20, 5);
+//    //lcd.clearLine();
+//    lcd.print(runTime, 1);
+//  }
+//  DEBUG_PRINTLN(debounceTimerUP);
+//  DEBUG_PRINTLN(debounceTimerDOWN);
+//  DEBUG_PRINTLN(millis());
+//  DEBUG_PRINTLN(tempCounter);
+//  delay(1000); 
+//  //////////////////////////////////////////////////////////////////////////////////////////
+
+  
   if (((millis() - debounceTimerUP) > backlightTimer) && ((millis() - debounceTimerDOWN) > backlightTimer))
   { //////////// Switch off the backlight after (backlightTimer) and go to sleep //////////////////////////////
     digitalWrite(pin_backLight, HIGH); //apaga la luz
     backlightON = false;
     debounceTimerUP = 0;
     debounceTimerDOWN = 0;
-    firstButtonPress = true;
+    firstButtonPressUP = true;
+    firstButtonPressDOWN = true;
     repaintCount = 0;
     loopCount = 0;
 
-    /////////////////  temporal block to show the time spent awake, between sleps  ///////////
-    unsigned long runTime = millis() - tempCounter;
-    lcd.setCursor(20, 5);
-    lcd.clearLine();
-    lcd.print(runTime, 1);
-    delay(1000);
-    //////////////////////////////////////////////////////////////////////////////////////////
     //    DEBUG_PRINTLN("Ahora me duermo");
     //    delay(20);
     for (byte ii = 0; ii < sleepTimeRepeats; ii++)
@@ -510,21 +537,19 @@ void loop()
       //radio.powerDown();
       LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
     }
-
-    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
-    delay(5);
-    tempCounter = millis();
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    
+//    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
+//    DEBUG_PRINTLN("============= First place to set tempcounter =============");
+//    delay(100);
+//    tempCounter = millis();
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    
   }   //////////////////////////////////////// end of sleep block  /////////////////////////////////////
+
 
 
   if (standbyUP || standbyDOWN)   ///////////// One button has been pressed  ////////////////////////////
   {
-    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
-    tempCounter = millis();
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
     loopCount = 0;
     detachInterrupt(0);
     detachInterrupt(1);
@@ -755,7 +780,8 @@ void loop()
         }
         EIFR = bit (INTF0);  // clear flag for interrupt 0
         EIFR = bit (INTF1);  // clear flag for interrupt 1
-        firstButtonPress = true;
+        firstButtonPressUP = true;
+        firstButtonPressDOWN = true;
         attachInterrupt(0, wakeUpButtonUp, RISING);
         attachInterrupt(1, wakeUpButtonDown, RISING);
         digitalWrite(pin_backLight, HIGH); //apaga la luz
@@ -779,7 +805,8 @@ void loop()
           EIFR = bit (INTF0);  // clear flag for interrupt 0
           EIFR = bit (INTF1);  // clear flag for interrupt 1
 
-          firstButtonPress = true;
+          firstButtonPressUP = true;
+          firstButtonPressDOWN = true;
           attachInterrupt(0, wakeUpButtonUp, RISING);
           attachInterrupt(1, wakeUpButtonDown, RISING);
           digitalWrite(pin_backLight, HIGH); //apaga la luz
