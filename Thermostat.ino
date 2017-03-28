@@ -1,8 +1,8 @@
 #include <SPI.h>
-#include "RF24.h"
-#include "LowPower.h"
-#include <DS3231.h>
-#include <PCD8544.h>
+#include "RF24.h"     // https://github.com/TMRh20/RF24
+#include "LowPower.h" // https://github.com/rocketscream/Low-Power
+#include <DS3231.h>   // http://www.rinkydinkelectronics.com/
+#include <PCD8544.h>  // https://github.com/carlosefr/pcd8544/releases
 
 ///// Coment the next line to disable Serial prints
 //#define DEBUG
@@ -21,10 +21,9 @@
 ///////// Definition of lcd: nokia 5100 display
 static PCD8544 lcd(5, 6, 7, 4, 8);
 
-/////////  RTC DS3231 using: http://www.rinkydinkelectronics.com/library.php?id=73
 DS3231  RTC(SDA, SCL);
 Time t;
-boolean DST=0;
+boolean DST = 0;
 
 
 //////// Radio module nrf24l01+ using library: tmrh20 RF24
@@ -39,7 +38,7 @@ boolean standby = false;
 
 boolean currentMode = false;
 boolean error = true;
-boolean batteryLow=false;
+boolean batteryLow = false;
 boolean manualModeON = false;
 boolean manualModeOFF = false;
 boolean autoMode = true;
@@ -57,21 +56,21 @@ byte pin_batteryLevel = A1;
 
 unsigned int errorCount = 0;
 unsigned int repaintCount = 0;
-unsigned int loopCount =0;
+unsigned int loopCount = 0;
 
 // *************************************************************************************************
-int sleepTimeMitutes=5;
-int batteryCheckCounter=0;
-int batteryChecksPerDay=1;
-int sleepTimeRepeats=(sleepTimeMitutes*60/8);
-int batteryChecksLimit=(batteryChecksPerDay*24*60)/sleepTimeMitutes;
+int sleepTimeMitutes = 5;
+int batteryCheckCounter = 0;
+int batteryChecksPerDay = 1;
+int sleepTimeRepeats = (sleepTimeMitutes * 60 / 8);
+int batteryChecksLimit = (batteryChecksPerDay * 24 * 60) / sleepTimeMitutes;
 // *************************************************************************************************
 
-byte message=0;
+byte message = 0;
 
 volatile float setPoint = 21.5;
 //float init_setPoint = 23.0;
-float old_setPoint=0;
+float old_setPoint = 0;
 
 float batteryVoltage = 1.5;  //Battery measured from one battery (AA or AAA) should be above batteryLowVoltaje
 float batteryLowVoltaje = 1.02;
@@ -94,7 +93,7 @@ volatile unsigned long debounceTimerDOWN = 0;
 
 unsigned long debounce = 500;
 unsigned long backlightTimer = 4000;  // ms to keep on the backlight
-unsigned long tempCounter=0;
+unsigned long tempCounter = 0;
 
 
 // Calculate thermistor temperature as T=a*x+b
@@ -112,12 +111,12 @@ float b = 86.8307006;
 //                                    0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00
 //                                  };
 
-float measureTemperature(int pin) 
+float measureTemperature(int pin)
 {
   digitalWrite(pin_thermistor_power, HIGH);
   delay(5);
   int raw = 0;
-  for (int i = 0; i < 7; i++) 
+  for (int i = 0; i < 7; i++)
   {
     raw += analogRead(pin);
     delay(5);
@@ -129,10 +128,10 @@ float measureTemperature(int pin)
 }  ////////////////// end measureTemperature(int pin)  //////////////////////////////
 
 
-float measureBatteryVoltage(int pin) 
+float measureBatteryVoltage(int pin)
 {
   int raw = 0;
-  for (int i = 0; i < 5; i++) 
+  for (int i = 0; i < 5; i++)
   {
     raw += analogRead(pin);
     delay(5);
@@ -143,7 +142,7 @@ float measureBatteryVoltage(int pin)
 }  /////////////////////////// end measureBatteryVoltage(int pin)  //////////////////////////////
 
 void wakeUpButtonUp()
-//// This function will be called when the pushButton tempUP 
+//// This function will be called when the pushButton tempUP
 {
   if ((millis() - debounceTimerUP) > debounce)
   {
@@ -177,7 +176,7 @@ void wakeUpButtonDown()
   }
 } ////////////////////////////// end wakeUpButtonDown() //////////////////////////////
 
-boolean checkDST(Time t) 
+boolean checkDST(Time t)
 {
   if (t.mon >= 10 || t.mon <= 3) {
     if (t.mon == 10) {
@@ -229,13 +228,13 @@ boolean checkDST(Time t)
 }  /////////////////////////////////   end of checkDST(t)   ////////////////////////////////////////
 
 
-void displayTime(Time t) 
+void displayTime(Time t)
 {
   int myhour;
   int minutes;
 
   lcd.setCursor(25, 0);
-  
+
   if (t.hour + DST == 24) {
     myhour = 0;
   }
@@ -285,12 +284,12 @@ void setup()
   RTC.begin();
 
   //RTC.setTime(00, 16, 0);  // we can use these lines to set the clock one and the comment it again
-//  RTC.setDate(26,03,2017);
-//  RTC.setDOW(SUNDAY);
-  
-  t=RTC.getTime();
-  DST=checkDST(t);
-  
+  //  RTC.setDate(26,03,2017);
+  //  RTC.setDOW(SUNDAY);
+
+  t = RTC.getTime();
+  DST = checkDST(t);
+
   pinMode(pin_button_tempDOWN, INPUT);
   pinMode(pin_button_tempUP, INPUT);
   pinMode(pin_thermistor_power, OUTPUT);
@@ -304,7 +303,7 @@ void setup()
 #endif
 
   radio.begin();
-  radio.setDataRate(RF24_250KBPS);        // Found 250KBPS to perform better and most reliable 
+  radio.setDataRate(RF24_250KBPS);        // Found 250KBPS to perform better and most reliable
   //  radio.setDataRate(RF24_1MBPS);
   //  radio.setDataRate(RF24_2MBPS);
   radio.setAutoAck(1);                    // Ensure autoACK is enabled
@@ -317,7 +316,7 @@ void setup()
 
   error = true;
   byte i = 0;
-  while (error && (i < 20) ) 
+  while (error && (i < 20) )
   {
     error = heating(heatingOFF);
     i += 1;
@@ -341,13 +340,13 @@ void setup()
   lcd.print("Temp:");
   lcd.setCursor(0, 2);
   lcd.print("Cale:");
-  message=0;
+  message = 0;
 
   roomTemperature = measureTemperature(pin_thermistor);
   batteryVoltage = measureBatteryVoltage(pin_batteryLevel);
 
-  debounceTimerUP=millis();
-  debounceTimerDOWN=millis();
+  debounceTimerUP = millis();
+  debounceTimerDOWN = millis();
 
   attachInterrupt(0, wakeUpButtonUp, RISING);
   attachInterrupt(1, wakeUpButtonDown, RISING);
@@ -418,7 +417,7 @@ boolean heating(boolean newMode)
   }
 
   DEBUG_PRINTLN(errorC);
-  
+
   radio.powerDown();
 
   if (!errorC)
@@ -427,57 +426,57 @@ boolean heating(boolean newMode)
     if (manualModeON)
     {
       currentMode = heatingON;
-      if (message!=1)
+      if (message != 1)
       {
         lcd.setCursor(0, 4);
         lcd.clearLine();
         lcd.print("Encend. manual");
-        message=1;
+        message = 1;
       }
     }
     else if (manualModeOFF)
     {
       currentMode = heatingOFF;
-      if (message!=2)
+      if (message != 2)
       {
         lcd.setCursor(0, 4);
         lcd.clearLine();
         lcd.print("Apagado manual");
-        message=2;
+        message = 2;
       }
     }
     else if (autoMode)
     {
       if (newMode == heatingON)
       {
-        if (message!=3)
+        if (message != 3)
         {
           lcd.setCursor(0, 4);
           lcd.clearLine();
           lcd.print("Calentando!!");
-          message=3;
+          message = 3;
         }
       }
       else if (newMode == heatingOFF)
       {
-        if (message!=4)
+        if (message != 4)
         {
           lcd.setCursor(0, 4);
           lcd.clearLine();
-          message=4;
+          message = 4;
         }
       }
     }
   }
   else
   {
-    if (message!=99)
+    if (message != 99)
     {
       DEBUG_PRINTLN("ERROR");
       lcd.setCursor(0, 4);
       lcd.clearLine();
       lcd.print("*** Error ***");
-      message=99;
+      message = 99;
     }
   }
 
@@ -485,10 +484,10 @@ boolean heating(boolean newMode)
 }  //////////////////////////////// end heating(boolean newMode) ///////////////////////////////////////
 
 
-void loop() 
-{  
-  if (((millis() - debounceTimerUP) > backlightTimer) && ((millis() - debounceTimerDOWN) > backlightTimer)) 
-  {   //////////// Switch off the backlight after (backlightTimer) and go to sleep //////////////////////////////
+void loop()
+{
+  if (((millis() - debounceTimerUP) > backlightTimer) && ((millis() - debounceTimerDOWN) > backlightTimer))
+  { //////////// Switch off the backlight after (backlightTimer) and go to sleep //////////////////////////////
     digitalWrite(pin_backLight, HIGH); //apaga la luz
     backlightON = false;
     debounceTimerUP = 0;
@@ -498,31 +497,35 @@ void loop()
     loopCount = 0;
 
     /////////////////  temporal block to show the time spent awake, between sleps  ///////////
-    unsigned long runTime=millis()-tempCounter;
-    lcd.setCursor(20,5);
-    //lcd.clearLine();
-    lcd.print(runTime,1);
+    unsigned long runTime = millis() - tempCounter;
+    lcd.setCursor(20, 5);
+    lcd.clearLine();
+    lcd.print(runTime, 1);
     delay(1000);
     //////////////////////////////////////////////////////////////////////////////////////////
-//    DEBUG_PRINTLN("Ahora me duermo");
-//    delay(20);
+    //    DEBUG_PRINTLN("Ahora me duermo");
+    //    delay(20);
     for (byte ii = 0; ii < sleepTimeRepeats; ii++)
     {
       //radio.powerDown();
       LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
     }
+
+    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
+    delay(5);
+    tempCounter = millis();
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
   }   //////////////////////////////////////// end of sleep block  /////////////////////////////////////
 
 
-  ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
-  delay(5);
-  tempCounter=millis();
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  
   if (standbyUP || standbyDOWN)   ///////////// One button has been pressed  ////////////////////////////
   {
-    loopCount=0;
+    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
+    tempCounter = millis();
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    loopCount = 0;
     detachInterrupt(0);
     detachInterrupt(1);
     standbyUP = false;
@@ -545,16 +548,16 @@ void loop()
       attachInterrupt(1, wakeUpButtonDown, RISING);
       //interrupts();
       DEBUG_PRINTLN("Ahora me despierto"); //Solo pulsado un boton
-      if (standby) 
+      if (standby)
       {
-        DST=checkDST(t);  // Check Daylight Saving Time only after going out from standby
+        DST = checkDST(t); // Check Daylight Saving Time only after going out from standby
         //lcd.setCursor(0, 4);
         lcd.clear();
         lcd.setCursor(0, 1);
         lcd.print("Temp:");
         lcd.setCursor(0, 2);
         lcd.print("Cale:");
-        lcd.setCursor(30,2);
+        lcd.setCursor(30, 2);
         lcd.print(setPoint, 1);
       }
       goingStandby = false;
@@ -563,70 +566,70 @@ void loop()
   }   ///////////////////////////// end of button press analisys ////////////////////////////////////////
 
 
-  if (loopCount<1)
+  if (loopCount < 1)
   {
-    batteryCheckCounter+=1;
-    
-  //  char* timestr = RTC.getTimeStr(FORMAT_SHORT);
-  //  char timestr2[6];
-  //  
-    t=RTC.getTime();
-    
+    batteryCheckCounter += 1;
+
+    //  char* timestr = RTC.getTimeStr(FORMAT_SHORT);
+    //  char timestr2[6];
+    //
+    t = RTC.getTime();
+
     //char timestr[] = "00:01";      ////////////////////// used in case not RTC is connected ///////////////
-  
+
     //  if (timestr[0]== '1' || timestr[0]=='2' || timestr[1]=='9')
     //{
     //    lcd.setPower(true);
     //  }
-  
-    
-  //  lcd.setCursor(20,5);
-  //  lcd.print(RTC.getTemp());
-  
+
+
+    //  lcd.setCursor(20,5);
+    //  lcd.print(RTC.getTemp());
+
     displayTime(t);
-  
+
     lcd.setCursor(0, 0);
     lcd.print(errorCount);
-  
-    
+
+
     ////DEBUG_PRINTLN(setPoint);
     //lcd.setCursor(0, 4);
     //lcd.drawBitmap(thermometer, THERMO_WIDTH, THERMO_HEIGHT);
-  
+
     if (!goingStandby)
-    {                         ////////////////////// normal operation when awake ///////////////////////////
+    { ////////////////////// normal operation when awake ///////////////////////////
       if (repaintCount < 1)
       {
         roomTemperature = measureTemperature(pin_thermistor);
         //roomTemperature*=(-1);
-  
-        
+
+
         lcd.setCursor(30, 1);
         lcd.print(roomTemperature, 1);
-  
-        
+
+
         //lcd.clearLine();
-  
+
         if (autoMode)
         {
-          if (setPoint!=old_setPoint)
+          if (setPoint != old_setPoint)
           {
-            lcd.setCursor(30,2);
+            lcd.setCursor(30, 2);
             lcd.print(setPoint, 1);
-            old_setPoint=setPoint;
+            old_setPoint = setPoint;
           }
         }
-  
-        if (batteryCheckCounter>batteryChecksLimit)
+
+        if (batteryCheckCounter > batteryChecksLimit)
         {
           DEBUG_PRINTLN("*************   Battery Check....");
           batteryVoltage = measureBatteryVoltage(pin_batteryLevel);
-          batteryCheckCounter=0;
+          batteryCheckCounter = 0;
           if (batteryVoltage < batteryLowVoltaje)
           {
             if (!batteryLow)
             {
-              batteryLow=true;
+              batteryLow = true;
               lcd.setCursor(0, 3);
               lcd.clearLine();
               lcd.print("Bateria baja!");
@@ -636,13 +639,13 @@ void loop()
           {
             if (batteryLow)
             {
-              batteryLow=false;
+              batteryLow = false;
               lcd.setCursor(0, 3);
               lcd.clearLine();
             }
           }
         }
-        
+
         // if temperature is above setpoint, send message to turn off heating
         if (roomTemperature >= (setPoint + thresholdHigh))
         {
@@ -675,13 +678,13 @@ void loop()
         }
         else if (roomTemperature < (setPoint - thresholdLow))
         {
-          if (currentMode == heatingOFF || currentMode == heatingON)  
+          if (currentMode == heatingOFF || currentMode == heatingON)
           {
             DEBUG_PRINTLN("roomTemperature baja! Enviando mensaje ON...");
             //long t_ini = millis();
             error = true;
             byte i = 0;
-            while (error && (i < 20)) 
+            while (error && (i < 20))
             {
               //DEBUG_PRINTLN("Encendiendo calefaccion....");
               error = heating(heatingON);
@@ -695,32 +698,32 @@ void loop()
             {
               currentMode = heatingON;
             }
-  
+
             else
             {
               errorCount += 1;
             }
-  
+
             //DEBUG_PRINT("Tiempo en calefaccion=");
             //DEBUG_PRINTLN(millis() - t_ini);
           }
-        }         
+        }
       }
-      repaintCount += 1; 
-      
+      repaintCount += 1;
+
     }  //////////////////////////////////// end of normal operation when awake //////////////////////////////////////
-  
-  
+
+
     else ////////////////////////////////////  if (goingStandby)    ///////////////////////////////////////////////////////////
-    {  //////////////  in case of both buttons where pressed: switch-off heating (if needed), and powerDown the display
+    { //////////////  in case of both buttons where pressed: switch-off heating (if needed), and powerDown the display
       if (currentMode == heatingON)
       {
         DEBUG_PRINTLN("Apagando... Enviando mensaje OFF...");
         // long t_ini = millis();
-  
+
         error = true;
         byte i = 0;
-        while (error && (i < 20) ) 
+        while (error && (i < 20) )
         {
           DEBUG_PRINTLN("Apagando calefaccion...");
           error = heating(heatingOFF);
@@ -755,15 +758,15 @@ void loop()
         firstButtonPress = true;
         attachInterrupt(0, wakeUpButtonUp, RISING);
         attachInterrupt(1, wakeUpButtonDown, RISING);
-        digitalWrite(pin_backLight, HIGH); //apaga la luz      
+        digitalWrite(pin_backLight, HIGH); //apaga la luz
         standby = true;
-      
+
         //DEBUG_PRINT("Tiempo en calefaccion=");
         //DEBUG_PRINTLN(millis() - t_ini);
       }
       else
       { // if (currentMode == heatingOFF)
-        if (!standby) 
+        if (!standby)
         {
           DEBUG_PRINTLN("La calefaccion ya estaba apagada. Así que solo queda entrar en standby");
           // setPoint=init_setPoint;
@@ -775,7 +778,7 @@ void loop()
           lcd.setPower(false);
           EIFR = bit (INTF0);  // clear flag for interrupt 0
           EIFR = bit (INTF1);  // clear flag for interrupt 1
-  
+
           firstButtonPress = true;
           attachInterrupt(0, wakeUpButtonUp, RISING);
           attachInterrupt(1, wakeUpButtonDown, RISING);
@@ -786,6 +789,6 @@ void loop()
       }
     }   ///////////////////////////  end of going into deep standby  ////////////////////////////////////////////////
 
-  }  
-  loopCount+=1;
+  }
+  loopCount += 1;
 } ///////////////////////////////////////   end loop()   ///////////////////////////////////////
