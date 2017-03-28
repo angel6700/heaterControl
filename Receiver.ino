@@ -30,9 +30,9 @@ byte respuesta_ON=111;
 byte respuesta_OFF=100;
 byte respuesta = 123;
 
-byte calefaccion_Encendida=0;
-unsigned long maximoEncendida=7200000;
-unsigned long miTimer=0;
+unsigned long lastAction=0;  // Will store the time in millis when is received a message from the heater (should be once every sleep period (default 5 min)
+unsigned long maxTimeHeating=900000; // Maximum time (in ms) without receiveing a message from the thermostat. Once reached, switch off the heater.
+
 
 boolean manualON;
 boolean manualOFF;
@@ -71,7 +71,8 @@ void setup()
   radio.openWritingPipe(pipes[1]);        // Both radios listen on the same pipes by default, and switch when writing
   radio.openReadingPipe(1,pipes[0]);
   radio.startListening();                 // Start listening
-  
+
+  lastAction=millis();
 }
 
 // en caso de que la calefaccion vaya a cambiar de estado, lo hace. En caso de que siga igual, no hace nada.
@@ -83,7 +84,6 @@ void calefaccion(byte nuevoEstado)
     digitalWrite(pin_LED, nuevoEstado);
     digitalWrite(pin_relay, nuevoEstado);
     estadoAnterior=nuevoEstado;
-    miTimer=millis();
   }
   else{
     DEBUG_PRINTLN("No hago nada");
@@ -91,11 +91,7 @@ void calefaccion(byte nuevoEstado)
 }
 
 void loop()
-{
-  if (miTimer>=millis()){
-    miTimer=0;
-  }
-  
+{  
   manualON=!digitalRead(pinManualON);
   manualOFF=!digitalRead(pinManualOFF);
 
@@ -112,6 +108,7 @@ void loop()
       DEBUG_PRINTLN("Manual ON");
       radio.writeAckPayload(pipeNo,&respuesta_ON, 1 );  
       delay(100);
+      lastAction=millis();
     }
   }
   
@@ -128,6 +125,7 @@ void loop()
       DEBUG_PRINTLN("Manual OFF");
       radio.writeAckPayload(pipeNo,&respuesta_OFF, 1 );  
       delay(100);
+      lastAction=millis();
     }
   }
 
@@ -144,9 +142,20 @@ void loop()
       DEBUG_PRINTLN(pipeNo);
       calefaccion(mensageRecibido);
       radio.writeAckPayload(pipeNo,&respuesta, 1 );  
+      lastAction=millis();
+    }    
+  }
+  
+  if (millis()-lastAction>maxTimeHeating)  // switch OFF the heater if a long time has passed with the heater ON and without receiving message from the thermostat
+  {
+    if (estadoAnterior==1)
+    {
+      DEBUG_PRINTLN(lastAction);
+      DEBUG_PRINTLN(millis());
+      DEBUG_PRINTLN("Demasiado tiempo sin noticias... apago");
+      calefaccion(0);  
+      lastAction=millis();
     }
-      
- 
   }
 }
 
