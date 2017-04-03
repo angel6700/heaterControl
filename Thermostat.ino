@@ -5,7 +5,7 @@
 #include <PCD8544.h>  // https://github.com/carlosefr/pcd8544/releases
 
 ///// Coment the next line to disable Serial prints
-#define DEBUG
+//#define DEBUG
 #define DEBUGDISPLAY
 
 #ifdef DEBUG
@@ -550,12 +550,11 @@ void loop()
     delay(200);
     
     for (byte ii = 0; ii < sleepTimeRepeats; ii++)
-    //for (byte ii = 0; ii < 1; ii++)
     {
-      //radio.powerDown();
-      if (!backlightON)
+      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+      if (backlightON)
       {
-        LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+        break;
       }
     }
     DEBUG_PRINTLN("Justo despues de dormir=====");
