@@ -5,7 +5,8 @@
 #include <PCD8544.h>  // https://github.com/carlosefr/pcd8544/releases
 
 ///// Coment the next line to disable Serial prints
-//#define DEBUG
+#define DEBUG
+#define DEBUGDISPLAY
 
 #ifdef DEBUG
 #define DEBUG_PRINTLN(x)   Serial.println(x)
@@ -14,6 +15,13 @@
 #define DEBUG_PRINTLN(x)
 #define DEBUG_PRINT(x)
 #endif
+
+#ifdef DEBUGDISPLAY
+#define DEBUG_LCD(x) debugLCD(x)
+#else
+#define DEBUG_LCD(x)
+#endif
+
 
 //////// Version will appear on LCD on power up and after reset
 #define VERSION 2.0
@@ -56,11 +64,12 @@ byte pin_backLight = A3;
 byte pin_batteryLevel = A1;
 
 unsigned int errorCount = 0;
+unsigned int old_errorCount = 0;
 unsigned int repaintCount = 0;
 unsigned int loopCount = 0;
 
 // *************************************************************************************************
-int sleepTimeMitutes = 1;
+int sleepTimeMitutes = 5;
 int batteryCheckCounter = 0;
 int batteryChecksPerDay = 1;
 int sleepTimeRepeats = (sleepTimeMitutes * 60 / 8);
@@ -171,7 +180,7 @@ void wakeUpButtonDown()
     {
       setPoint -= temperatureStep;
     }
-    digitalWrite(pin_backLight, LOW);  // Turn off backlight
+    digitalWrite(pin_backLight, LOW);  // Turn on backlight
     backlightON = true;
     standbyDOWN = true;
     firstButtonPressDOWN = false;
@@ -278,6 +287,14 @@ void displayError()
   lcd.print("comunicacion");
 } ////////////////////////////// end displayError()  //////////////////////////////
 
+
+void debugLCD(int i)
+{
+  lcd.setCursor(0, 5);
+  lcd.clearLine();
+  lcd.print(i);
+}
+
 void setup()
 {
   lcd.begin(84, 48);   // clears the screen and buffer
@@ -313,8 +330,8 @@ void setup()
   radio.setRetries(5, 15);                // Smallest time between retries, max no. of retries
   radio.setPayloadSize(1);                // Here we are sending 1-byte payloads to test the call-response speed
   radio.openWritingPipe(pipes[0]);        // Both radios listen on the same pipes by default, and switch when writing
-  radio.openReadingPipe(1, pipes[1]);
-  radio.startListening();                 // Start listening
+  //radio.openReadingPipe(1, pipes[1]);
+  //radio.startListening();                 // Start listening
 
   error = true;
   byte i = 0;
@@ -322,9 +339,7 @@ void setup()
   {
     error = heating(heatingOFF);
     i += 1;
-    lcd.setCursor(0, 5);
-    lcd.clearLine();
-    lcd.print(i);
+    DEBUG_LCD(i);
   }
   if (!error)
   {
@@ -367,19 +382,19 @@ boolean heating(boolean newMode)
   if (newMode == heatingON)
   {
     payload = 1;
-    DEBUG_PRINTLN("Encendiendo calefaccion en [heating]");
+    //DEBUG_PRINTLN("Encendiendo calefaccion en [heating]");
   }
   else if (newMode == heatingOFF)
   {
     payload = 0;
-    DEBUG_PRINTLN("Apagando calefaccion en [heating]");
+    //DEBUG_PRINTLN("Apagando calefaccion en [heating]");
   }
 
   // Send a message to radio_server
   byte gotByte;
   if (!radio.write( &payload, 1 ))
   {
-    DEBUG_PRINTLN(F("failed."));
+    //DEBUG_PRINTLN(F("failed."));
   }
   else
   {
@@ -418,7 +433,7 @@ boolean heating(boolean newMode)
     }
   }
 
-  DEBUG_PRINTLN(errorC);
+  //DEBUG_PRINTLN(errorC);
 
   radio.powerDown();
 
@@ -492,10 +507,11 @@ void loop()
 //  /////////////////  temporal block to show the time spent awake, between sleps  ///////////
 //  if (debounceTimerUP>0)
 //  {
-//    unsigned long runTime = millis() - tempCounter;
+//    unsigned long runTime = millis() - debounceTimerUP;
 //    lcd.setCursor(20, 5);
 //    //lcd.clearLine();
 //    lcd.print(runTime, 1);
+//    //delay(1000);
 //  }
 //  else if (debounceTimerDOWN>0)
 //  {
@@ -530,13 +546,19 @@ void loop()
     repaintCount = 0;
     loopCount = 0;
 
-    //    DEBUG_PRINTLN("Ahora me duermo");
-    //    delay(20);
+    DEBUG_PRINTLN("Ahora me duermo");
+    delay(200);
+    
     for (byte ii = 0; ii < sleepTimeRepeats; ii++)
+    //for (byte ii = 0; ii < 1; ii++)
     {
       //radio.powerDown();
-      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+      if (!backlightON)
+      {
+        LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+      }
     }
+    DEBUG_PRINTLN("Justo despues de dormir=====");
     
 //    ///////////////////////  temporal variable to show the time spent awake, between sleps  //////////////
 //    DEBUG_PRINTLN("============= First place to set tempcounter =============");
@@ -556,7 +578,7 @@ void loop()
     standbyUP = false;
     standbyDOWN = false;
     repaintCount = 0;
-    DEBUG_PRINTLN("Algun boton pulsado");
+    DEBUG_PRINTLN("Ahora me despierto ****");
     //    delay(20);
     lcd.setPower(true);
     if (digitalRead(pin_button_tempDOWN) && digitalRead(pin_button_tempUP))  //Los dos botones pulsados
@@ -572,12 +594,14 @@ void loop()
       attachInterrupt(0, wakeUpButtonUp, RISING);
       attachInterrupt(1, wakeUpButtonDown, RISING);
       //interrupts();
-      DEBUG_PRINTLN("Ahora me despierto"); //Solo pulsado un boton
+      DEBUG_PRINTLN("Solo un boton pulsado"); //Solo pulsado un boton
       if (standby)
       {
+        DEBUG_PRINTLN("Saliendo de Standby");
         DST = checkDST(t); // Check Daylight Saving Time only after going out from standby
         //lcd.setCursor(0, 4);
         lcd.clear();
+        message=0;
         lcd.setCursor(0, 1);
         lcd.print("Temp:");
         lcd.setCursor(0, 2);
@@ -593,6 +617,9 @@ void loop()
 
   if (loopCount < 1)
   {
+    loopCount += 1;
+    DEBUG_PRINTLN("sumo uno a loopCount");
+    DEBUG_PRINTLN("dentro de loopcount");
     batteryCheckCounter += 1;
 
     //  char* timestr = RTC.getTimeStr(FORMAT_SHORT);
@@ -613,9 +640,12 @@ void loop()
 
     displayTime(t);
 
-    lcd.setCursor(0, 0);
-    lcd.print(errorCount);
-
+    if (errorCount!=old_errorCount)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print(errorCount);
+      old_errorCount+=1;
+    }
 
     ////DEBUG_PRINTLN(setPoint);
     //lcd.setCursor(0, 4);
@@ -625,6 +655,7 @@ void loop()
     { ////////////////////// normal operation when awake ///////////////////////////
       if (repaintCount < 1)
       {
+        DEBUG_PRINTLN("Normal operation when awake. Should happen only once");
         roomTemperature = measureTemperature(pin_thermistor);
         //roomTemperature*=(-1);
 
@@ -685,9 +716,7 @@ void loop()
               //DEBUG_PRINTLN("Apagando calefaccion...");
               error = heating(heatingOFF);
               i += 1;
-              lcd.setCursor(0, 5);
-              lcd.clearLine();
-              lcd.print(i);
+              DEBUG_LCD(i);
             }
             if (!error)
             {
@@ -714,10 +743,7 @@ void loop()
               //DEBUG_PRINTLN("Encendiendo calefaccion....");
               error = heating(heatingON);
               i += 1;
-              lcd.setCursor(0, 5);
-              lcd.clearLine();
-              lcd.setCursor(50, 5);
-              lcd.print(i);
+              DEBUG_LCD(i);
             }
             if (!error)
             {
@@ -753,18 +779,17 @@ void loop()
           DEBUG_PRINTLN("Apagando calefaccion...");
           error = heating(heatingOFF);
           i += 1;
-          lcd.setCursor(0, 5);
-          lcd.clearLine();
-          lcd.print(i);
+          DEBUG_LCD(i);
         }
         if (error)
         {
           lcd.clear();
+          message=0;
           lcd.print("No pudo apagarse");
           lcd.print("la calefaccion.");
           lcd.print("Apagar manualmente");
           backlightON = false;
-          delay(3000);
+          delay(5000);
           lcd.setPower(false);
         }
         else
@@ -773,6 +798,7 @@ void loop()
           currentMode = heatingOFF;
           backlightON = false;
           lcd.clear();
+          message=0;
           lcd.setCursor(5, 4);
           lcd.print("Buenas noches");
           delay(3000);
@@ -798,6 +824,7 @@ void loop()
           // setPoint=init_setPoint;
           backlightON = false;
           lcd.clear();
+          message=0;
           lcd.setCursor(5, 4);
           lcd.print("Buenas noches");
           delay(3000);
@@ -817,5 +844,5 @@ void loop()
     }   ///////////////////////////  end of going into deep standby  ////////////////////////////////////////////////
 
   }
-  loopCount += 1;
+  
 } ///////////////////////////////////////   end loop()   ///////////////////////////////////////
